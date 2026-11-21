@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Cruzeiro do Sul · Painel We</title>
+<style>
+:root {
+  --font-anthropic-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-anthropic-serif: Georgia, "Times New Roman", serif;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 20px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 18px;
+  --cds-radius: 10px;
+  --cds-font-size-title: 28px; --cds-font-size-heading: 18px; --cds-font-size-body: 14px; --cds-font-size-caption: 12px;
+  --cds-font-weight-medium: 600;
+  --color-fg: #1a1d24; --color-fg-muted: #5c6680; --color-bg: #f4f5f8; --color-panel: #ffffff;
+  --color-border-line: #e2e5ec; --color-ok: #1f8a4c; --color-warn: #b26a00;
+}
+html, body { margin: 0; background: var(--color-bg); }
+.pg { max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
+.pg-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 28px; color: var(--color-fg-muted); font: 12px var(--font-anthropic-sans); }
+.pg-foot button { font: inherit; border: 1px solid var(--color-border-line); background: var(--color-panel); border-radius: 999px; padding: 4px 12px; cursor: pointer; color: var(--color-fg); }
+.dash-skeleton { background: var(--color-border-line); border-radius: 6px; min-width: 2ch; }
+</style>
+</head>
+<body>
+<div class="pg">
+<script>
+// Lê as abas publicadas da planilha (CSV) e entrega ao painel. Atualiza a cada 5 minutos.
+window.CP_FONTES = {itens: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=0&single=true&output=csv', campanhas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=1&single=true&output=csv', fases: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=2&single=true&output=csv', flights: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=3&single=true&output=csv', alertas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=4&single=true&output=csv'};
+window.dash = (function () {
+  const loaders = {}, calcs = {}, draws = {}, state = {};
+  function parseCSV(t) {
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < t.length; i++) {
+      const c = t[i];
+      if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+      else if (c !== '\r') f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+  function drawAll() { Object.keys(draws).forEach((n) => api.draw(n)); }
+  async function load() {
+    const ids = Object.keys(window.CP_FONTES);
+    await Promise.all(ids.map(async (id) => {
+      try {
+        const r = await fetch(window.CP_FONTES[id] + '&t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const values = parseCSV(await r.text());
+        const out = loaders[id] ? loaders[id]({ answer: { values } }) : values;
+        state[id] = { status: 'ok', data: out.rows || out };
+      } catch (e) { if (!state[id] || state[id].status !== 'ok') state[id] = { status: 'error', data: [], message: String(e) }; }
+    }));
+    const el = document.getElementById('pg-hora');
+    if (el) el.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    drawAll();
+  }
+  const api = {
+    loader(id, o) { loaders[id] = o.fn; },
+    calc(id, o) { calcs[id] = o; },
+    data(id) {
+      if (calcs[id]) {
+        const ins = calcs[id].inputs.map((x) => api.data(x));
+        if (ins.some((d) => d.status === 'error')) return { status: 'error', data: null };
+        if (ins.some((d) => d.status !== 'ok')) return { status: 'loading', data: null };
+        try { return { status: 'ok', data: calcs[id].fn(...ins.map((d) => d.data)) }; } catch (e) { return { status: 'error', data: null }; }
+      }
+      return state[id] || { status: 'loading', data: [] };
+    },
+    draw(name, fn) {
+      if (fn) draws[name] = fn;
+      const el = document.querySelector('[data-draw="' + name + '"]');
+      if (el && draws[name]) draws[name](el);
+    },
+    reload: load
+  };
+  window.addEventListener('DOMContentLoaded', () => { load(); setInterval(load, 5 * 60 * 1000); });
+  return api;
+})();
+</script>
+<style>
+.cp { display: flex; flex-direction: column; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+.cp h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.cp h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.cp h3 { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.cp-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-lg); }
+.cp-logos { display: inline-flex; align-items: center; gap: var(--cds-gap-md); background: #ffffff; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 10px 16px; }
+.cp-logos img { height: 30px; width: auto; display: block; }
+.cp-sep { width: 1px; height: 28px; background: #d9dee8; }
+.cp-sub { color: var(--color-fg-muted); margin: var(--cds-gap-xs) 0 0; }
+.cp-muted { color: var(--color-fg-muted); }
+.cp-small { font-size: var(--cds-font-size-caption); }
+.cp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: var(--cds-gap-md); }
+.cp-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.cp-tile-v { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.cp-tile-l { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+button.cp-tile { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.cp-tile:hover { border-color: var(--color-fg-muted); }
+button.cp-tile[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: inset 0 0 0 1px var(--color-fg); }
+.cp-agora { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-ok); }
+.cp-nav { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); align-items: center; justify-content: space-between; }
+.cp-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 2px; }
+.cp-seg button { font: inherit; border: none; background: none; color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-md); border-radius: 999px; cursor: pointer; }
+.cp-seg button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
+.cp button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--cds-gap-lg); }
+.cp-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+.cp-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); flex-wrap: wrap; }
+.cp-counts { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cp-counts b { color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.cp-link { font: inherit; background: none; border: none; padding: 0; color: var(--color-fg); text-decoration: underline; cursor: pointer; align-self: flex-start; }
+.cp-chips { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); }
+.cp-chip { font: inherit; font-size: var(--cds-font-size-caption); border: 1px solid var(--color-border-line); background: var(--color-panel); color: var(--color-fg); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.cp-chip[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: inset 0 0 0 1px var(--color-fg); }
+.cp-chip b { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.cp-wrap { overflow-x: auto; }
+.cp table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); }
+.cp th { text-align: left; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.cp td { padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.cp td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cp td.it { min-width: 220px; }
+.cp td.it > div + div { margin-top: 2px; }
+.cp-pill { display: inline-block; white-space: nowrap; font-size: var(--cds-font-size-caption); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--color-border-line); }
+.cp-pill.ok { color: var(--color-ok); border-color: var(--color-ok); }
+.cp-pill.warn { color: var(--color-warn); border-color: var(--color-warn); }
+.cp-pill.muted { color: var(--color-fg-muted); }
+.cp-falta { color: var(--color-warn); font-size: var(--cds-font-size-caption); }
+.cp-empty { color: var(--color-fg-muted); }
+.cp details > summary { cursor: pointer; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) 0; }
+.cp-flight { border-left: 3px solid var(--color-fg-muted); padding-left: var(--cds-pad-md); display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+.cp-group { display: flex; flex-direction: column; gap: var(--cds-gap-xs); margin-top: var(--cds-gap-sm); }
+.cp-links a { margin-right: var(--cds-gap-sm); white-space: nowrap; }
+.cp a { color: inherit; }
+</style>
+
+<div class="cp" id="painel">
+  <header class="cp-top" id="topo">
+    <div class="cp-logos"><img src="data:image/png;base64,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" alt="We"><span class="cp-sep"></span><img src="data:image/png;base64,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" alt="Universidade Cruzeiro do Sul"></div>
+    <div>
+      <h1>Conta Cruzeiro do Sul Educacional</h1>
+      <p class="cp-sub">O que está em aberto, com quem e até quando · Visão We (interna)</p>
+    </div>
+  </header>
+
+  <div class="cp-tiles" id="resumo" data-draw="tiles"></div>
+
+  <div class="cp-nav" id="navegacao" data-draw="nav"></div>
+
+  <main id="vista" data-draw="vista"></main>
+</div>
+
+<script>
+window.CP_MODO = 'we';
+const cpRead = (map) => ({answer}) => {
+  const a = answer && answer.content ? answer.content : answer;
+  const v = (a && a.values) || [];
+  const head = (v[0] || []).map((h) => map[h] || h);
+  const rows = v.slice(1).filter((r) => r && r[0]).map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] == null ? '' : String(r[i]).trim()])));
+  return {columns: head, rows};
+};
+dash.loader('itens', {
+  description: 'Lê a aba de itens: a primeira linha vira o nome das colunas e linhas sem ID são ignoradas.',
+  fn: cpRead({'ID':'id','Campanha':'campanha','Fase':'fase','Ação':'acao','Item':'item','Flight':'flight','Departamento':'depto','Com quem':'quem','Status':'status','Prazo':'prazo','Veiculação início':'veic_ini','Veiculação fim':'veic_fim','Próximo passo':'proximo','Descritivo':'descritivo','Nº de alterações':'alteracoes','Última atualização':'atualizado','Visível ao cliente':'visivel','Falta informar (automático)':'falta','Nº do job':'job','Link Taskrow':'taskrow','Link ativos / layouts':'ativos'})
+});
+dash.loader('campanhas', {
+  description: 'Lê a aba de campanhas: a primeira linha vira o nome das colunas.',
+  fn: cpRead({'ID':'id','Campanha':'campanha','Tipo':'tipo','Status geral':'status','Início':'inicio','Fim':'fim','Visível ao cliente':'visivel','Observações':'obs','Nº do job':'job','Link Taskrow':'taskrow','Pasta de documentos':'pasta'})
+});
+dash.loader('fases', {
+  description: 'Lê a aba Fases: a primeira linha vira o nome das colunas.',
+  fn: cpRead({'ID':'id','Campanha':'campanha','Ordem':'ordem','Fase':'fase','Início':'inicio','Fim':'fim','Observações':'obs'})
+});
+dash.loader('flights', {
+  description: 'Lê a aba Flights: a primeira linha vira o nome das colunas.',
+  fn: cpRead({'ID':'id','Campanha':'campanha','Flight':'flight','Veículo / programa':'veiculo','Início':'inicio','Fim':'fim','Fases que toca':'fases','Formato':'formato','Praça':'praca','Observações':'obs'})
+});
+
+const cpVis = (item, campanhas) => {
+  const c = campanhas.find((x) => x.campanha === item.campanha);
+  return item.visivel !== 'Não' && !(c && c.visivel === 'Não');
+};
+const cpCount = (rs) => {
+  const has = (s, k) => String(s || '').startsWith(k);
+  const ab = rs.filter((r) => !has(r.status, 'Finalizado') && !has(r.status, 'Cancelado'));
+  return { abertos: ab.length, em_execucao: rs.filter((r) => has(r.status, 'Em execução')).length, em_aprovacao: rs.filter((r) => has(r.status, 'Em aprovação')).length, aguardando: rs.filter((r) => has(r.status, 'Aguardando')).length, planejado: rs.filter((r) => has(r.status, 'Planejado')).length, com_cliente: ab.filter((r) => r.quem === 'Cruzeiro do Sul').length, com_we: ab.filter((r) => r.quem === 'We').length, finalizados: rs.filter((r) => has(r.status, 'Finalizado')).length, total: rs.length };
+};
+const cpAtiva = (c) => !/^(Finalizado|Cancelado)/.test(String(c.status || ''));
+const cpAtivos = (itens, campanhas) => itens.filter((r) => { const c = campanhas.find((x) => x.campanha === r.campanha); return !c || cpAtiva(c); });
+window.cpVis = cpVis;
+window.cpAtiva = cpAtiva;
+
+dash.calc('resumo', {
+  inputs: ['itens', 'campanhas'],
+  title: 'Resumo da conta',
+  description: 'Itens por situação (em aberto = nem Finalizado nem Cancelado), só das campanhas ativas (Status geral diferente de Finalizado ou Cancelado) e dos itens visíveis nesta visão.',
+  fn: (itens, campanhas) => [
+    Object.assign({visao: window.CP_MODO}, cpCount(cpAtivos(window.CP_MODO === 'we' ? itens : itens.filter((r) => cpVis(r, campanhas)), campanhas)))
+  ]
+});
+dash.calc('por_campanha', {
+  inputs: ['itens', 'campanhas'],
+  title: 'Itens por campanha',
+  description: 'Para cada campanha ativa: em aberto, em aberto com a Cruzeiro do Sul, finalizados e total.',
+  fn: (itens, campanhas) => {
+    const base = cpAtivos(window.CP_MODO === 'we' ? itens : itens.filter((r) => cpVis(r, campanhas)), campanhas);
+    return campanhas.filter(cpAtiva).map((c) => Object.assign({visao: window.CP_MODO, campanha: c.campanha}, cpCount(base.filter((r) => r.campanha === c.campanha))));
+  }
+});
+dash.calc('por_fase', {
+  inputs: ['itens', 'fases', 'campanhas'],
+  title: 'Itens por fase',
+  description: 'Para cada fase de cada campanha ativa: itens em aberto, finalizados e total.',
+  fn: (itens, fases, campanhas) => {
+    const base = cpAtivos(window.CP_MODO === 'we' ? itens : itens.filter((r) => cpVis(r, campanhas)), campanhas);
+    return fases.map((f) => Object.assign({visao: window.CP_MODO, campanha: f.campanha, fase: f.fase}, cpCount(base.filter((r) => r.campanha === f.campanha && r.fase === f.fase))));
+  }
+});
+dash.calc('por_area', {
+  inputs: ['itens', 'campanhas'],
+  title: 'Itens por área',
+  description: 'Itens de cada departamento nas campanhas ativas. Itens sem departamento contam em “Sem área”.',
+  fn: (itens, campanhas) => {
+    const base = cpAtivos(window.CP_MODO === 'we' ? itens : itens.filter((r) => cpVis(r, campanhas)), campanhas);
+    const ordem = ['Atendimento', 'Planejamento', 'Mídia', 'Criação', 'Conteúdo', 'Produção', 'Administrativo'];
+    const found = [...new Set(base.map((r) => r.depto).filter(Boolean))];
+    const areas = ordem.concat(found.filter((d) => !ordem.includes(d))).concat(['Sem área']);
+    return areas.map((area) => Object.assign({visao: window.CP_MODO, area}, cpCount(base.filter((r) => (r.depto || 'Sem área') === area))));
+  }
+});
+</script>
+<script>
+dash.loader('alertas', {
+  description: 'Lê a aba Alertas: a primeira linha vira o nome das colunas.',
+  fn: cpRead({'Data':'data','ID do item':'id','Tipo de alerta':'tipo','Descrição':'descricao','Resolvido?':'resolvido','Como foi resolvido':'solucao'})
+});
+dash.calc('alertas_abertos', {
+  inputs: ['alertas'],
+  title: 'Alertas abertos',
+  description: 'Alertas da aba Alertas que não estão marcados como resolvidos.',
+  fn: (alertas) => alertas.filter((a) => a.resolvido !== 'Sim').length
+});
+</script>
+
+<script>
+window.cpUI = window.cpUI || { modo: 'campanhas', visao: window.CP_MODO, campanha: null, fase: null, area: 'Planejamento', filtro: null };
+const U = window.cpUI;
+const AREAS = ['Atendimento', 'Planejamento', 'Mídia', 'Criação', 'Conteúdo', 'Produção', 'Administrativo', 'Sem área'];
+
+const has = (s, k) => String(s || '').startsWith(k);
+const isOpen = (r) => !has(r.status, 'Finalizado') && !has(r.status, 'Cancelado');
+const pDate = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
+const short = (s) => { const d = pDate(s); return d ? s.slice(0, 5) : (s || ''); };
+const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const byPriority = (a, b) => {
+  const da = pDate(a.prazo), db = pDate(b.prazo);
+  if (da && db && da - db) return da - db;
+  if (da && !db) return -1;
+  if (!da && db) return 1;
+  return String(a.id).localeCompare(String(b.id));
+};
+const enc = (v) => String(v).replace(/%/g, '%25').replace(/&/g, '%26').replace(/=/g, '%3D');
+const where = (o) => Object.entries(o).map(([k, v]) => k + '=' + enc(v)).join('&');
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function num(src, field, w, val) { const b = el('b', null, val == null ? '—' : String(val)); b.dataset.source = src; b.dataset.field = field; b.dataset.where = where(w); return b; }
+function pill(status) {
+  return el('span', 'cp-pill ' + (has(status, 'Finalizado') ? 'ok' : (has(status, 'Em aprovação') || has(status, 'Aguardando')) ? 'warn' : has(status, 'Em execução') ? '' : 'muted'), status || 'Sem status');
+}
+function safeLink(label, url) { if (!url || !/^https?:\/\//.test(url)) return null; const a = el('a', null, label); a.href = url; a.target = '_blank'; a.rel = 'noopener'; return a; }
+function veic(r) { return r.veic_ini ? (r.veic_fim && r.veic_fim !== r.veic_ini ? short(r.veic_ini) + ' a ' + short(r.veic_fim) : short(r.veic_ini)) : ''; }
+function rerender() { dash.draw('nav'); dash.draw('vista'); dash.draw('tiles'); }
+function go(patch) { Object.assign(U, patch); rerender(); const v = document.getElementById('navegacao'); if (v && patch.scroll) v.scrollIntoView({block: 'start'}); }
+
+function visibleItems(itens, campanhas) { return U.visao === 'we' ? itens : itens.filter((r) => window.cpVis(r, campanhas)); }
+// Só campanhas ativas (Status geral diferente de Finalizado/Cancelado); Administrativo e Institucional primeiro.
+function visibleCamps(campanhas) {
+  const rank = (c) => (c.tipo === 'Administrativo' || c.campanha === 'Administrativo') ? 0 : (c.tipo === 'Institucional' || c.campanha === 'Institucional') ? 1 : 2;
+  return campanhas.filter((c) => window.cpAtiva(c) && (U.visao === 'we' || c.visivel !== 'Não'))
+    .map((c, i) => [c, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
+}
+
+function itemTable(rows, opts) {
+  opts = opts || {};
+  const wrap = el('div', 'cp-wrap');
+  const t = el('table'); t.dataset.source = 'itens'; t.dataset.rowKey = 'id';
+  const cols = [['item', 'O quê'], ['quem', 'Com quem'], ['status', 'Status'], ['prazo', 'Prazo']];
+  if (opts.veic) cols.push(['veic_ini', 'No ar']);
+  if (U.visao === 'we') cols.push(['job', 'Links']);
+  const hr = el('tr'); cols.forEach(([f, l]) => { const th = el('th', null, l); th.dataset.field = f; hr.appendChild(th); });
+  const thead = el('thead'); thead.appendChild(hr); t.appendChild(thead);
+  const tb = el('tbody');
+  rows.forEach((r) => {
+    const tr = el('tr'); tr.dataset.key = r.id;
+    const td = el('td', 'it');
+    const l1 = el('div');
+    l1.appendChild(document.createTextNode(r.item));
+    td.appendChild(l1);
+    const ctx = [opts.camp ? r.campanha : null, opts.fase ? (r.fase || (r.flight ? 'Flight inteiro' : '')) : null, r.acao].filter(Boolean).join(' · ');
+    if (ctx) td.appendChild(el('div', 'cp-muted cp-small', ctx));
+    const nota = r.proximo ? 'Próximo passo: ' + r.proximo : r.descritivo;
+    if (nota) td.appendChild(el('div', 'cp-muted cp-small', nota));
+    if (U.visao === 'we' && r.falta && isOpen(r)) td.appendChild(el('div', 'cp-falta', 'Falta informar: ' + r.falta.replace(/;\s*$/, '')));
+    tr.appendChild(td);
+    tr.appendChild(el('td', null, r.quem || '—'));
+    const ts = el('td'); ts.appendChild(pill(r.status)); tr.appendChild(ts);
+    tr.appendChild(el('td', 'n', short(r.prazo) || '—'));
+    if (opts.veic) tr.appendChild(el('td', 'n', veic(r)));
+    if (U.visao === 'we') {
+      const tl = el('td', 'cp-links cp-small');
+      [safeLink('Taskrow', r.taskrow), safeLink('Ativos', r.ativos)].forEach((a) => a && tl.appendChild(a));
+      if (r.job) tl.appendChild(el('span', 'cp-muted', 'Job ' + r.job));
+      tr.appendChild(tl);
+    }
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+function openAndDone(rows, opts) {
+  const frag = el('div', 'cp-group');
+  const ab = rows.filter(isOpen).sort(byPriority);
+  const fin = rows.filter((r) => !isOpen(r));
+  if (ab.length) frag.appendChild(itemTable(ab, opts));
+  else frag.appendChild(el('p', 'cp-empty', 'Nada em aberto aqui.'));
+  if (fin.length) {
+    const d = el('details'); d.appendChild(el('summary', null, 'Entregues e cancelados (' + fin.length + ')'));
+    d.appendChild(itemTable(fin, opts)); frag.appendChild(d);
+  }
+  return frag;
+}
+function msg(text) { return el('p', 'cp-empty', text); }
+
+const FILTROS = [
+  ['abertos', 'Em aberto', isOpen],
+  ['em_execucao', 'Em execução', (r) => has(r.status, 'Em execução')],
+  ['em_aprovacao', 'Em aprovação', (r) => has(r.status, 'Em aprovação')],
+  ['aguardando', 'Aguardando', (r) => has(r.status, 'Aguardando')],
+  ['planejado', 'Planejado', (r) => has(r.status, 'Planejado')],
+  ['com_cliente', 'Aguardando a Cruzeiro do Sul', (r) => isOpen(r) && r.quem === 'Cruzeiro do Sul'],
+  ['com_we', 'Com a We', (r) => isOpen(r) && r.quem === 'We'],
+  ['finalizados', 'Entregues', (r) => has(r.status, 'Finalizado')]
+];
+window.cpFiltros = FILTROS;
+
+dash.draw('tiles', (box) => {
+  const d = dash.data('resumo');
+  const row = d.status === 'ok' && d.data ? d.data[0] : null;
+  box.replaceChildren(...FILTROS.map(([k, label]) => {
+    const b = el('button', 'cp-tile'); b.type = 'button'; b.id = 'tile-' + k;
+    b.setAttribute('aria-pressed', U.filtro === k ? 'true' : 'false');
+    b.title = 'Ver a lista: ' + label;
+    const v = el('span', 'cp-tile-v' + (d.status === 'loading' ? ' dash-skeleton' : ''), row ? String(row[k]) : (d.status === 'loading' ? '' : '—'));
+    v.dataset.source = 'resumo'; v.dataset.field = k; v.dataset.row = '0';
+    b.append(v, el('span', 'cp-tile-l', label));
+    b.onclick = () => go({ filtro: U.filtro === k ? null : k, campanha: null, fase: null, scroll: true });
+    return b;
+  }));
+});
+
+dash.draw('nav', (box) => {
+  const seg = el('div', 'cp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Ver por');
+  [['campanhas', 'Campanhas'], ['areas', 'Áreas']].forEach(([k, l]) => {
+    const b = el('button', null, l); b.type = 'button'; b.setAttribute('aria-pressed', U.modo === k && !U.filtro ? 'true' : 'false');
+    b.onclick = () => go({ modo: k, campanha: null, fase: null, filtro: null }); seg.appendChild(b);
+  });
+  box.replaceChildren(seg);
+});
+
+dash.draw('vista', (box) => {
+  const di = dash.data('itens'), dc = dash.data('campanhas'), df = dash.data('fases'), dfl = dash.data('flights');
+  const all = [di, dc, df, dfl];
+  if (all.some((d) => d.status === 'error')) return box.replaceChildren(msg('Não foi possível ler a planilha agora.'));
+  if (all.some((d) => d.status !== 'ok')) return box.replaceChildren(msg('Carregando a planilha…'));
+  const campanhas = visibleCamps(dc.data);
+  const itens = visibleItems(di.data, dc.data).filter((r) => campanhas.some((c) => c.campanha === r.campanha) || !r.campanha);
+  const fases = df.data, flights = dfl.data.filter((f) => campanhas.some((c) => c.campanha === f.campanha));
+  const pc = dash.data('por_campanha'), pf = dash.data('por_fase'), pa = dash.data('por_area');
+  const cnt = (d, w) => (d.status === 'ok' && d.data ? d.data.find((x) => Object.entries(w).every(([k, v]) => x[k] === v)) : null) || {};
+  if (U.filtro) return box.replaceChildren(filtroView(itens, campanhas));
+  if (U.modo === 'areas') return box.replaceChildren(areasView(itens, campanhas, flights, pa, cnt));
+  if (U.campanha && campanhas.some((c) => c.campanha === U.campanha)) return box.replaceChildren(campanhaView(itens, campanhas, fases, flights, pf, cnt));
+  box.replaceChildren(homeView(itens, campanhas, pc, cnt));
+});
+
+function homeView(itens, campanhas, pc, cnt) {
+  const out = el('div', 'cp-grid'); out.id = 'campanhas';
+  const t = today();
+  campanhas.forEach((c) => {
+    const rs = itens.filter((r) => r.campanha === c.campanha);
+    const w = { visao: U.visao, campanha: c.campanha };
+    const k = cnt(pc, w);
+    const card = el('div', 'cp-card'); card.id = 'camp-' + (c.id || c.campanha);
+    const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, c.campanha));
+    if (c.inicio || c.fim) head.appendChild(el('span', 'cp-muted cp-small', [short(c.inicio), short(c.fim)].filter(Boolean).join(' a ')));
+    card.appendChild(head);
+    const p = el('div', 'cp-counts');
+    p.append(num('por_campanha', 'abertos', w, k.abertos), ' em aberto · ', num('por_campanha', 'com_cliente', w, k.com_cliente), ' aguardando a Cruzeiro do Sul · ', num('por_campanha', 'finalizados', w, k.finalizados), ' entregues');
+    card.appendChild(p);
+    const ab = rs.filter(isOpen).sort(byPriority);
+    const next = ab.filter((r) => pDate(r.prazo) && pDate(r.prazo) >= t).sort((a, b) => pDate(a.prazo) - pDate(b.prazo))[0];
+    if (next) card.appendChild(el('div', 'cp-small', 'Próximo prazo: ' + short(next.prazo) + ' · ' + next.item));
+    if (ab.length) {
+      const list = el('div', 'cp-wrap'); const tb = el('table'); tb.dataset.source = 'itens'; tb.dataset.rowKey = 'id';
+      const hr = el('tr'); [['item', 'Em aberto'], ['quem', 'Com quem'], ['prazo', 'Prazo']].forEach(([f, l]) => { const th = el('th', null, l); th.dataset.field = f; hr.appendChild(th); });
+      const th = el('thead'); th.appendChild(hr); tb.appendChild(th);
+      const body = el('tbody');
+      ab.slice(0, 5).forEach((r) => { const tr = el('tr'); tr.dataset.key = r.id; tr.append(el('td', 'it', r.item), el('td', null, r.quem || '—'), el('td', 'n', short(r.prazo) || '—')); body.appendChild(tr); });
+      tb.appendChild(body); list.appendChild(tb); card.appendChild(list);
+      if (ab.length > 5) card.appendChild(el('div', 'cp-muted cp-small', '+ ' + (ab.length - 5) + ' itens em aberto'));
+    } else card.appendChild(msg('Nada em aberto.'));
+    const b = el('button', 'cp-link', 'Abrir campanha'); b.type = 'button';
+    b.onclick = () => go({ campanha: c.campanha, fase: null, filtro: null, scroll: true });
+    card.appendChild(b);
+    out.appendChild(card);
+  });
+  if (U.visao === 'we') out.appendChild(alertasCard());
+  return out;
+}
+
+function alertasCard() {
+  const card = el('div', 'cp-card'); card.id = 'alertas';
+  const da = dash.data('alertas'), n = dash.data('alertas_abertos');
+  const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, 'Informação a confirmar'));
+  const b = el('b', null, n.status === 'ok' && n.data != null ? String(n.data) : '—'); b.dataset.source = 'alertas_abertos';
+  const s = el('span', 'cp-counts'); s.append(b, ' alertas abertos'); head.appendChild(s); card.appendChild(head);
+  card.appendChild(el('div', 'cp-muted cp-small', 'Responda por áudio ou texto para fechar.'));
+  if (da.status !== 'ok') { card.appendChild(msg('Carregando…')); return card; }
+  const rows = da.data.filter((a) => a.resolvido !== 'Sim');
+  if (!rows.length) { card.appendChild(msg('Nenhum alerta aberto.')); return card; }
+  const w = el('div', 'cp-wrap'); const t = el('table'); t.dataset.source = 'alertas'; t.dataset.rowKey = 'descricao';
+  const hr = el('tr'); [['id', 'Item'], ['descricao', 'O que falta']].forEach(([f, l]) => { const th = el('th', null, l); th.dataset.field = f; hr.appendChild(th); });
+  const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+  const body = el('tbody');
+  rows.forEach((a) => { const tr = el('tr'); tr.dataset.key = a.descricao; tr.append(el('td', 'n', a.id), el('td', null, a.descricao)); body.appendChild(tr); });
+  t.appendChild(body); w.appendChild(t); card.appendChild(w);
+  return card;
+}
+
+function campanhaView(itens, campanhas, fases, flights, pf, cnt) {
+  const c = campanhas.find((x) => x.campanha === U.campanha);
+  const out = el('div', 'cp-group'); out.id = 'campanha';
+  const back = el('button', 'cp-link', '← Todas as campanhas'); back.type = 'button'; back.onclick = () => go({ campanha: null, fase: null });
+  out.appendChild(back);
+  const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, c.campanha));
+  if (c.inicio || c.fim) head.appendChild(el('span', 'cp-muted', [short(c.inicio), short(c.fim)].filter(Boolean).join(' a ')));
+  out.appendChild(head);
+  if (c.obs) out.appendChild(el('p', 'cp-muted', c.obs));
+  if (U.visao === 'we') {
+    const l = el('div', 'cp-links cp-small');
+    [safeLink('Pasta de documentos', c.pasta), safeLink('Taskrow', c.taskrow)].forEach((a) => a && l.appendChild(a));
+    if (c.job) l.appendChild(el('span', 'cp-muted', 'Job ' + c.job));
+    if (l.childNodes.length) out.appendChild(l);
+  }
+  const rs = itens.filter((r) => r.campanha === c.campanha);
+  const fs = fases.filter((f) => f.campanha === c.campanha).sort((a, b) => (+a.ordem || 0) - (+b.ordem || 0));
+  const semFase = rs.filter((r) => !r.fase && !r.flight);
+  const opts = fs.map((f) => f.fase).concat(semFase.length ? ['Campanha toda'] : []);
+  const atual = faseAtual(fs, rs);
+  if (!U.fase || !opts.includes(U.fase)) U.fase = atual || opts[0] || null;
+  if (fs.length > 1 || semFase.length) {
+    const chips = el('div', 'cp-chips'); chips.id = 'fases'; chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Fases');
+    fs.forEach((f) => {
+      const w = { visao: U.visao, campanha: c.campanha, fase: f.fase };
+      const k = cnt(pf, w);
+      const b = el('button', 'cp-chip'); b.type = 'button'; b.setAttribute('aria-pressed', U.fase === f.fase ? 'true' : 'false');
+      const nm = el('b', null, f.fase);
+      if (f.fase === atual) { nm.append(' '); nm.appendChild(el('span', 'cp-agora', '● agora')); }
+      b.appendChild(nm);
+      const dt = [short(f.inicio), short(f.fim)].filter(Boolean);
+      if (dt.length) b.appendChild(el('span', 'cp-muted', dt[0] === dt[1] ? dt[0] : dt.join(' a ')));
+      const s = el('span', 'cp-muted'); s.append(num('por_fase', 'abertos', w, k.abertos), ' em aberto de ', num('por_fase', 'total', w, k.total));
+      b.appendChild(s);
+      b.onclick = () => go({ fase: f.fase }); chips.appendChild(b);
+    });
+    if (semFase.length) {
+      const b = el('button', 'cp-chip'); b.type = 'button'; b.setAttribute('aria-pressed', U.fase === 'Campanha toda' ? 'true' : 'false');
+      b.appendChild(el('b', null, 'Campanha toda')); b.appendChild(el('span', 'cp-muted', semFase.filter(isOpen).length + ' em aberto'));
+      b.onclick = () => go({ fase: 'Campanha toda' }); chips.appendChild(b);
+    }
+    out.appendChild(chips);
+  }
+  const card = el('div', 'cp-card'); card.id = 'fase';
+  const f = fs.find((x) => x.fase === U.fase);
+  if (fs.length > 1 || U.fase === 'Campanha toda') card.appendChild(el('h3', null, U.fase));
+  if (f && f.obs) card.appendChild(el('div', 'cp-muted cp-small', f.obs));
+  const fr = U.fase === 'Campanha toda' ? semFase : rs.filter((r) => r.fase === U.fase);
+  card.appendChild(openAndDone(fr, { veic: fr.some((r) => r.veic_ini) }));
+  out.appendChild(card);
+  const fls = flights.filter((x) => x.campanha === c.campanha);
+  if (fls.length) {
+    const fc = el('div', 'cp-card'); fc.id = 'flights';
+    fc.appendChild(el('h3', null, 'Mídia · flights'));
+    fc.appendChild(el('div', 'cp-muted cp-small', 'Cada flight aparece uma vez, mesmo quando atravessa mais de uma fase.'));
+    fls.forEach((x) => fc.appendChild(flightBlock(x, rs)));
+    out.appendChild(fc);
+  }
+  return out;
+}
+
+// Fase em que estamos agora: pelas datas da aba Fases; sem datas, a última fase (pela Ordem) que já tem item iniciado.
+function faseAtual(fs, rs) {
+  if (!fs.length) return null;
+  const t = today();
+  const dated = fs.filter((f) => pDate(f.inicio));
+  if (dated.length) {
+    const now = dated.filter((f) => pDate(f.inicio) <= t && (!pDate(f.fim) || pDate(f.fim) >= t));
+    if (now.length) return now.sort((a, b) => pDate(b.inicio) - pDate(a.inicio))[0].fase;
+    const next = dated.filter((f) => pDate(f.inicio) > t).sort((a, b) => pDate(a.inicio) - pDate(b.inicio))[0];
+    const past = dated.filter((f) => pDate(f.inicio) <= t).sort((a, b) => pDate(b.inicio) - pDate(a.inicio))[0];
+    if (next) return next.fase;
+    if (past) return past.fase;
+  }
+  const started = fs.filter((f) => rs.some((r) => r.fase === f.fase && r.status && !has(r.status, 'Planejado') && !has(r.status, 'Cancelado')));
+  if (started.length) return started[started.length - 1].fase;
+  return fs[0].fase;
+}
+
+function filtroView(itens, campanhas) {
+  const f = window.cpFiltros.find((x) => x[0] === U.filtro);
+  const out = el('div', 'cp-group'); out.id = 'filtro';
+  const back = el('button', 'cp-link', '← Voltar'); back.type = 'button'; back.onclick = () => go({ filtro: null });
+  out.appendChild(back);
+  const rows = itens.filter(f[2]);
+  const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, f[1]));
+  const n = el('span', 'cp-counts'); const nb = el('b', null, String(rows.length)); nb.dataset.source = 'resumo'; nb.dataset.field = f[0]; nb.dataset.row = '0';
+  n.append(nb, rows.length === 1 ? ' item' : ' itens');
+  head.appendChild(n); out.appendChild(head);
+  if (!rows.length) { out.appendChild(msg('Nenhum item.')); return out; }
+  campanhas.forEach((c) => {
+    const cr = rows.filter((r) => r.campanha === c.campanha).sort(byPriority);
+    if (!cr.length) return;
+    const card = el('div', 'cp-card'); card.id = 'filtro-' + (c.id || c.campanha);
+    const h = el('div', 'cp-card-head'); h.appendChild(el('h3', null, c.campanha)); h.appendChild(el('span', 'cp-muted cp-small', cr.length + (cr.length === 1 ? ' item' : ' itens')));
+    card.appendChild(h);
+    card.appendChild(itemTable(cr, { fase: true, veic: cr.some((r) => r.veic_ini) }));
+    const ab = el('button', 'cp-link cp-small', 'Abrir campanha'); ab.type = 'button';
+    ab.onclick = () => go({ campanha: c.campanha, fase: null, filtro: null, modo: 'campanhas', scroll: true });
+    card.appendChild(ab);
+    out.appendChild(card);
+  });
+  return out;
+}
+
+function flightBlock(x, rs) {
+  const b = el('div', 'cp-flight'); b.id = 'flight-' + x.id;
+  b.appendChild(el('h3', null, x.flight));
+  const dt = [short(x.inicio), short(x.fim)].filter(Boolean).join(' a ');
+  b.appendChild(el('div', 'cp-muted cp-small', [x.veiculo, dt, x.formato, x.praca].filter(Boolean).join(' · ')));
+  if (x.fases) b.appendChild(el('div', 'cp-small', 'Fases: ' + x.fases.replace(/;\s*/g, ' + ')));
+  if (x.obs) b.appendChild(el('div', 'cp-muted cp-small', x.obs));
+  const fr = rs.filter((r) => r.flight === x.flight);
+  if (fr.length) b.appendChild(openAndDone(fr, { fase: true, veic: true }));
+  return b;
+}
+
+function areasView(itens, campanhas, flights, pa, cnt) {
+  const out = el('div', 'cp-group'); out.id = 'areas';
+  const chips = el('div', 'cp-chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Áreas');
+  const AR = pa.status === 'ok' && pa.data ? pa.data.map((x) => x.area) : AREAS;
+  const vis = AR.filter((a) => cnt(pa, { visao: U.visao, area: a }).total);
+  if (vis.length && !vis.includes(U.area)) U.area = vis[0];
+  vis.forEach((a) => {
+    const w = { visao: U.visao, area: a };
+    const k = cnt(pa, w);
+    const b = el('button', 'cp-chip'); b.type = 'button'; b.setAttribute('aria-pressed', U.area === a ? 'true' : 'false');
+    b.appendChild(el('b', null, a));
+    const s = el('span', 'cp-muted'); s.append(num('por_area', 'abertos', w, k.abertos), ' em aberto'); b.appendChild(s);
+    b.onclick = () => go({ area: a }); chips.appendChild(b);
+  });
+  out.appendChild(chips);
+  const rs = itens.filter((r) => (r.depto || 'Sem área') === U.area);
+  if (U.area === 'Mídia' && flights.length) {
+    const fc = el('div', 'cp-card'); fc.id = 'flights-midia';
+    fc.appendChild(el('h3', null, 'Flights'));
+    flights.forEach((x) => fc.appendChild(flightBlock(x, itens.filter((r) => r.campanha === x.campanha))));
+    out.appendChild(fc);
+  }
+  let any = false;
+  campanhas.forEach((c) => {
+    const cr = rs.filter((r) => r.campanha === c.campanha);
+    if (!cr.length) return;
+    any = true;
+    const card = el('div', 'cp-card'); card.id = 'area-' + (c.id || c.campanha);
+    card.appendChild(el('h3', null, c.campanha));
+    card.appendChild(openAndDone(cr, { fase: true }));
+    out.appendChild(card);
+  });
+  if (!any) out.appendChild(msg('Nenhum item nesta área.'));
+  return out;
+}
+</script>
+<div class="pg-foot"><span id="pg-hora">Carregando…</span><span>Os dados vêm direto da planilha e se atualizam sozinhos a cada 5 minutos. <button type="button" id="pg-reload">Atualizar agora</button></span></div>
+</div>
+<script>document.getElementById('pg-reload').addEventListener('click', () => window.dash.reload());</script>
+</body>
+</html>
