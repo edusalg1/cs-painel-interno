@@ -28,7 +28,7 @@ html, body { margin: 0; background: var(--color-bg); }
 <div class="pg">
 <script>
 // Lê as abas publicadas da planilha (CSV) e entrega ao painel. Atualiza a cada 5 minutos.
-window.CP_FONTES = {itens: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=0&single=true&output=csv', campanhas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=1&single=true&output=csv', fases: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=2&single=true&output=csv', flights: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=3&single=true&output=csv', alertas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=4&single=true&output=csv'};
+window.CP_FONTES = {itens: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=0&single=true&output=csv', campanhas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=1&single=true&output=csv', fases: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=2&single=true&output=csv', flights: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=3&single=true&output=csv', alertas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=4&single=true&output=csv', midia: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT6CH4LZHS72BL0-dBpo6uvGx7BXy173eo4hqgUlxpYfNjPgLOs_ijetLoxir--7F3UbXBbMFnqLFsl/pub?gid=5&single=true&output=csv'};
 window.dash = (function () {
   const loaders = {}, calcs = {}, draws = {}, state = {};
   function parseCSV(t) {
@@ -95,7 +95,25 @@ window.dash = (function () {
 .cp-sub { color: var(--color-fg-muted); margin: var(--cds-gap-xs) 0 0; }
 .cp-muted { color: var(--color-fg-muted); }
 .cp-small { font-size: var(--cds-font-size-caption); }
-.cp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: var(--cds-gap-md); }
+.cp-tiles { display: flex; flex-direction: column; gap: var(--cds-gap-md); }
+.cp-tiles-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: var(--cds-gap-md); }
+.cp-tiles-prazo { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.cp-tiles-cap { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-bottom: calc(-1 * var(--cds-gap-xs)); }
+.cp-tiles-status .cp-tile { padding: var(--cds-pad-sm) var(--cds-pad-md); }
+.cp-tiles-status .cp-tile-v { font-size: var(--cds-font-size-heading); }
+button.cp-tile.venc { border-left: 3px solid #c2413a; }
+button.cp-tile.venc .cp-tile-v { color: #b42318; }
+button.cp-tile.hoje { border-left: 3px solid #d9a400; }
+button.cp-tile.hoje .cp-tile-v { color: #8a5a00; }
+.cp-tile-s { font-size: 11px; color: var(--color-fg-muted); }
+.cp tr.cp-venc > td { background: #fdf1f0; }
+.cp tr.cp-venc > td:first-child { box-shadow: inset 3px 0 0 #c2413a; }
+.cp tr.cp-hoje > td { background: #fff8e3; }
+.cp tr.cp-hoje > td:first-child { box-shadow: inset 3px 0 0 #d9a400; }
+.cp .cp-pz-venc { color: #b42318; }
+.cp .cp-pz-hoje { color: #8a5a00; font-weight: var(--cds-font-weight-medium); }
+.cp-mrow.cp-venc { background: #fdf1f0; box-shadow: inset 3px 0 0 #c2413a; padding-left: 10px; }
+.cp-mrow.cp-hoje { background: #fff8e3; box-shadow: inset 3px 0 0 #d9a400; padding-left: 10px; }
 .cp-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
 .cp-tile-v { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; min-height: 1.2em; }
 .cp-tile-l { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
@@ -125,6 +143,7 @@ button.cp-tile[aria-pressed="true"] { border-color: var(--color-fg); box-shadow:
 .cp td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cp td.it { min-width: 220px; }
 .cp td.it > div + div { margin-top: 2px; }
+#campanhas td.it { min-width: 0; }
 .cp-pill { display: inline-block; white-space: nowrap; font-size: var(--cds-font-size-caption); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--color-border-line); }
 .cp-pill.ok { color: var(--color-ok); border-color: var(--color-ok); }
 .cp-pill.warn { color: var(--color-warn); border-color: var(--color-warn); }
@@ -136,6 +155,14 @@ button.cp-tile[aria-pressed="true"] { border-color: var(--color-fg); box-shadow:
 .cp-group { display: flex; flex-direction: column; gap: var(--cds-gap-xs); margin-top: var(--cds-gap-sm); }
 .cp-links a { margin-right: var(--cds-gap-sm); white-space: nowrap; }
 .cp a { color: inherit; }
+.cp-hist { list-style: none; margin: 4px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--color-border-line); display: flex; flex-direction: column; gap: 6px; }
+.cp-hist li { font-size: var(--cds-font-size-caption); }
+.cp-hist .d { font-variant-numeric: tabular-nums; color: var(--color-fg-muted); margin-right: 6px; }
+.cp-hist .o { color: var(--color-fg-muted); }
+.cp-sec-n { color: var(--color-fg-muted); font-weight: 400; }
+.cp-mrow { border-top: 1px solid var(--color-border-line); padding: var(--cds-pad-sm) 0; display: flex; flex-direction: column; gap: 4px; }
+.cp-mrow:first-of-type { border-top: none; }
+.cp-mhead { display: flex; justify-content: space-between; gap: var(--cds-gap-sm); flex-wrap: wrap; align-items: baseline; }
 </style>
 
 <div class="cp" id="painel">
@@ -238,6 +265,10 @@ dash.loader('alertas', {
   description: 'Lê a aba Alertas: a primeira linha vira o nome das colunas.',
   fn: cpRead({'Data':'data','ID do item':'id','Tipo de alerta':'tipo','Descrição':'descricao','Resolvido?':'resolvido','Como foi resolvido':'solucao'})
 });
+dash.loader('midia', {
+  description: 'Lê a aba Mídia – Histórico: uma linha por acontecimento, ligada ao item pelo ID.',
+  fn: cpRead({'Data':'data','ID do item':'id','O que aconteceu':'evento','Status':'status','Com quem':'quem','Origem':'origem','Campanha (automático)':'campanha','Demanda (automático)':'demanda'})
+});
 dash.calc('alertas_abertos', {
   inputs: ['alertas'],
   title: 'Alertas abertos',
@@ -248,6 +279,7 @@ dash.calc('alertas_abertos', {
 
 <script>
 window.cpUI = window.cpUI || { modo: 'campanhas', visao: window.CP_MODO, campanha: null, fase: null, area: 'Planejamento', filtro: null };
+try { if (window.CP_MODO === 'we' && /^#midia/.test(location.hash)) window.cpUI.modo = 'midia'; } catch (e) {}
 const U = window.cpUI;
 const AREAS = ['Atendimento', 'Planejamento', 'Mídia', 'Criação', 'Conteúdo', 'Produção', 'Administrativo', 'Sem área'];
 
@@ -256,6 +288,22 @@ const isOpen = (r) => !has(r.status, 'Finalizado') && !has(r.status, 'Cancelado'
 const pDate = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
 const short = (s) => { const d = pDate(s); return d ? s.slice(0, 5) : (s || ''); };
 const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+// Situação do prazo de um item em aberto: 'venc' (antes de hoje), 'hoje', 'prox' (próximos 7 dias) ou null.
+const prazoSit = (r) => {
+  if (!isOpen(r)) return null;
+  const d = pDate(r.prazo); if (!d) return null;
+  const n = Math.round((d - today()) / 86400000);
+  return n < 0 ? 'venc' : n === 0 ? 'hoje' : n <= 7 ? 'prox' : null;
+};
+const diasAtraso = (r) => Math.round((today() - pDate(r.prazo)) / 86400000);
+// Destaque de linha: vencido só na visão We; hoje nas duas.
+const rowMark = (r) => { const s = prazoSit(r); return s === 'hoje' ? 'cp-hoje' : (s === 'venc' && U.visao === 'we') ? 'cp-venc' : ''; };
+function prazoCell(r, compact) {
+  const s = prazoSit(r);
+  if (s === 'hoje') return el('td', 'n cp-pz-hoje', 'Hoje');
+  if (s === 'venc' && U.visao === 'we') { const k = diasAtraso(r); const td = el('td', 'n cp-pz-venc', compact ? short(r.prazo) : short(r.prazo) + ' · há ' + k + (k === 1 ? ' dia' : ' dias')); td.title = 'Vencido há ' + k + (k === 1 ? ' dia' : ' dias'); return td; }
+  return el('td', 'n', short(r.prazo) || '—');
+}
 const byPriority = (a, b) => {
   const da = pDate(a.prazo), db = pDate(b.prazo);
   if (da && db && da - db) return da - db;
@@ -274,7 +322,7 @@ function pill(status) {
 function safeLink(label, url) { if (!url || !/^https?:\/\//.test(url)) return null; const a = el('a', null, label); a.href = url; a.target = '_blank'; a.rel = 'noopener'; return a; }
 function veic(r) { return r.veic_ini ? (r.veic_fim && r.veic_fim !== r.veic_ini ? short(r.veic_ini) + ' a ' + short(r.veic_fim) : short(r.veic_ini)) : ''; }
 function rerender() { dash.draw('nav'); dash.draw('vista'); dash.draw('tiles'); }
-function go(patch) { Object.assign(U, patch); rerender(); const v = document.getElementById('navegacao'); if (v && patch.scroll) v.scrollIntoView({block: 'start'}); }
+function go(patch) { Object.assign(U, patch); if ('modo' in patch) { try { history.replaceState(null, '', U.modo === 'midia' ? '#midia' : location.pathname + location.search); } catch (e) {} } rerender(); const v = document.getElementById('navegacao'); if (v && patch.scroll) v.scrollIntoView({block: 'start'}); }
 
 function visibleItems(itens, campanhas) { return U.visao === 'we' ? itens : itens.filter((r) => window.cpVis(r, campanhas)); }
 // Só campanhas ativas (Status geral diferente de Finalizado/Cancelado); Administrativo e Institucional primeiro.
@@ -295,7 +343,7 @@ function itemTable(rows, opts) {
   const thead = el('thead'); thead.appendChild(hr); t.appendChild(thead);
   const tb = el('tbody');
   rows.forEach((r) => {
-    const tr = el('tr'); tr.dataset.key = r.id;
+    const tr = el('tr'); tr.dataset.key = r.id; const mk = rowMark(r); if (mk) tr.className = mk;
     const td = el('td', 'it');
     const l1 = el('div');
     l1.appendChild(document.createTextNode(r.item));
@@ -308,7 +356,7 @@ function itemTable(rows, opts) {
     tr.appendChild(td);
     tr.appendChild(el('td', null, r.quem || '—'));
     const ts = el('td'); ts.appendChild(pill(r.status)); tr.appendChild(ts);
-    tr.appendChild(el('td', 'n', short(r.prazo) || '—'));
+    tr.appendChild(prazoCell(r));
     if (opts.veic) tr.appendChild(el('td', 'n', veic(r)));
     if (U.visao === 'we') {
       const tl = el('td', 'cp-links cp-small');
@@ -345,26 +393,66 @@ const FILTROS = [
   ['com_we', 'Com a We', (r) => isOpen(r) && r.quem === 'We'],
   ['finalizados', 'Entregues', (r) => has(r.status, 'Finalizado')]
 ];
-window.cpFiltros = FILTROS;
+const FILTROS_PRAZO = [
+  ['vencidos', 'Vencidos', (r) => prazoSit(r) === 'venc'],
+  ['hoje', 'Hoje', (r) => prazoSit(r) === 'hoje'],
+  ['proximos', 'Próximos 7 dias', (r) => prazoSit(r) === 'prox']
+];
+window.cpFiltros = FILTROS.concat(FILTROS_PRAZO);
 
+dash.calc('prazos', {
+  inputs: ['itens', 'campanhas'],
+  title: 'Prazos',
+  description: 'Itens em aberto (nem Finalizado nem Cancelado) das campanhas ativas visíveis nesta visão, pelo prazo: vencidos (antes de hoje), hoje e próximos 7 dias corridos; cada grupo dividido entre We e Cruzeiro do Sul. Itens sem prazo não contam.',
+  fn: (itens, campanhas) => {
+    const base = cpAtivos(window.CP_MODO === 'we' ? itens : itens.filter((r) => cpVis(r, campanhas)), campanhas);
+    const out = { visao: window.CP_MODO };
+    [['vencidos', 'venc'], ['hoje', 'hoje'], ['proximos', 'prox']].forEach(([k, s]) => {
+      const g = base.filter((r) => prazoSit(r) === s);
+      out[k] = g.length; out[k + '_we'] = g.filter((r) => r.quem === 'We').length; out[k + '_cliente'] = g.filter((r) => r.quem === 'Cruzeiro do Sul').length;
+    });
+    return [out];
+  }
+});
+
+function tileBtn(k, label, src, row, status, cls, sub) {
+  const b = el('button', 'cp-tile' + (cls ? ' ' + cls : '')); b.type = 'button'; b.id = 'tile-' + k;
+  b.setAttribute('aria-pressed', U.filtro === k ? 'true' : 'false');
+  b.title = 'Ver a lista: ' + label;
+  const v = el('span', 'cp-tile-v' + (status === 'loading' ? ' dash-skeleton' : ''), row ? String(row[k]) : (status === 'loading' ? '' : '—'));
+  v.dataset.source = src; v.dataset.field = k; v.dataset.row = '0';
+  b.append(v, el('span', 'cp-tile-l', label));
+  if (sub) b.appendChild(sub);
+  b.onclick = () => go({ filtro: U.filtro === k ? null : k, campanha: null, fase: null, scroll: true });
+  return b;
+}
+function splitLine(row, k) {
+  if (!row) return null;
+  const s = el('span', 'cp-tile-s');
+  const we = el('b', null, String(row[k + '_we'])); we.dataset.source = 'prazos'; we.dataset.field = k + '_we'; we.dataset.row = '0';
+  const cl = el('b', null, String(row[k + '_cliente'])); cl.dataset.source = 'prazos'; cl.dataset.field = k + '_cliente'; cl.dataset.row = '0';
+  s.append(we, ' com a We · ', cl, ' com a Cruzeiro');
+  return s;
+}
 dash.draw('tiles', (box) => {
-  const d = dash.data('resumo');
+  const d = dash.data('resumo'), dp = dash.data('prazos');
   const row = d.status === 'ok' && d.data ? d.data[0] : null;
-  box.replaceChildren(...FILTROS.map(([k, label]) => {
-    const b = el('button', 'cp-tile'); b.type = 'button'; b.id = 'tile-' + k;
-    b.setAttribute('aria-pressed', U.filtro === k ? 'true' : 'false');
-    b.title = 'Ver a lista: ' + label;
-    const v = el('span', 'cp-tile-v' + (d.status === 'loading' ? ' dash-skeleton' : ''), row ? String(row[k]) : (d.status === 'loading' ? '' : '—'));
-    v.dataset.source = 'resumo'; v.dataset.field = k; v.dataset.row = '0';
-    b.append(v, el('span', 'cp-tile-l', label));
-    b.onclick = () => go({ filtro: U.filtro === k ? null : k, campanha: null, fase: null, scroll: true });
-    return b;
-  }));
+  const prow = dp.status === 'ok' && dp.data ? dp.data[0] : null;
+  const fim = new Date(today().getTime() + 7 * 86400000);
+  const ate = el('span', 'cp-tile-s', 'até ' + String(fim.getDate()).padStart(2, '0') + '/' + String(fim.getMonth() + 1).padStart(2, '0'));
+  const pz = el('div', 'cp-tiles-row cp-tiles-prazo');
+  if (U.visao === 'we') pz.appendChild(tileBtn('vencidos', 'Vencidos', 'prazos', prow, dp.status, 'venc', splitLine(prow, 'vencidos')));
+  pz.appendChild(tileBtn('hoje', 'Hoje', 'prazos', prow, dp.status, 'hoje', U.visao === 'we' ? splitLine(prow, 'hoje') : null));
+  pz.appendChild(tileBtn('proximos', 'Próximos 7 dias', 'prazos', prow, dp.status, '', U.visao === 'we' ? splitLine(prow, 'proximos') : ate));
+  if (U.visao === 'we') pz.lastChild.appendChild(ate);
+  const st = el('div', 'cp-tiles-row cp-tiles-status');
+  FILTROS.forEach(([k, label]) => st.appendChild(tileBtn(k, label, 'resumo', row, d.status, '', null)));
+  box.replaceChildren(el('div', 'cp-tiles-cap', 'Prazos (itens em aberto)'), pz, el('div', 'cp-tiles-cap', 'Por status'), st);
 });
 
 dash.draw('nav', (box) => {
   const seg = el('div', 'cp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Ver por');
-  [['campanhas', 'Campanhas'], ['areas', 'Áreas']].forEach(([k, l]) => {
+  [['campanhas', 'Campanhas'], ['areas', 'Áreas']].concat(U.visao === 'we' ? [['midia', 'Mídia']] : []).forEach(([k, l]) => {
     const b = el('button', null, l); b.type = 'button'; b.setAttribute('aria-pressed', U.modo === k && !U.filtro ? 'true' : 'false');
     b.onclick = () => go({ modo: k, campanha: null, fase: null, filtro: null }); seg.appendChild(b);
   });
@@ -383,6 +471,7 @@ dash.draw('vista', (box) => {
   const cnt = (d, w) => (d.status === 'ok' && d.data ? d.data.find((x) => Object.entries(w).every(([k, v]) => x[k] === v)) : null) || {};
   if (U.filtro) return box.replaceChildren(filtroView(itens, campanhas));
   if (U.modo === 'areas') return box.replaceChildren(areasView(itens, campanhas, flights, pa, cnt));
+  if (U.modo === 'midia' && U.visao === 'we') return box.replaceChildren(midiaView(itens, campanhas));
   if (U.campanha && campanhas.some((c) => c.campanha === U.campanha)) return box.replaceChildren(campanhaView(itens, campanhas, fases, flights, pf, cnt));
   box.replaceChildren(homeView(itens, campanhas, pc, cnt));
 });
@@ -409,7 +498,7 @@ function homeView(itens, campanhas, pc, cnt) {
       const hr = el('tr'); [['item', 'Em aberto'], ['quem', 'Com quem'], ['prazo', 'Prazo']].forEach(([f, l]) => { const th = el('th', null, l); th.dataset.field = f; hr.appendChild(th); });
       const th = el('thead'); th.appendChild(hr); tb.appendChild(th);
       const body = el('tbody');
-      ab.slice(0, 5).forEach((r) => { const tr = el('tr'); tr.dataset.key = r.id; tr.append(el('td', 'it', r.item), el('td', null, r.quem || '—'), el('td', 'n', short(r.prazo) || '—')); body.appendChild(tr); });
+      ab.slice(0, 5).forEach((r) => { const tr = el('tr'); tr.dataset.key = r.id; const mk = rowMark(r); if (mk) tr.className = mk; tr.append(el('td', 'it', r.item), el('td', null, r.quem || '—'), prazoCell(r, true)); body.appendChild(tr); });
       tb.appendChild(body); list.appendChild(tb); card.appendChild(list);
       if (ab.length > 5) card.appendChild(el('div', 'cp-muted cp-small', '+ ' + (ab.length - 5) + ' itens em aberto'));
     } else card.appendChild(msg('Nada em aberto.'));
@@ -527,7 +616,7 @@ function filtroView(itens, campanhas) {
   out.appendChild(back);
   const rows = itens.filter(f[2]);
   const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, f[1]));
-  const n = el('span', 'cp-counts'); const nb = el('b', null, String(rows.length)); nb.dataset.source = 'resumo'; nb.dataset.field = f[0]; nb.dataset.row = '0';
+  const n = el('span', 'cp-counts'); const nb = el('b', null, String(rows.length)); nb.dataset.source = FILTROS_PRAZO.some((x) => x[0] === f[0]) ? 'prazos' : 'resumo'; nb.dataset.field = f[0]; nb.dataset.row = '0';
   n.append(nb, rows.length === 1 ? ' item' : ' itens');
   head.appendChild(n); out.appendChild(head);
   if (!rows.length) { out.appendChild(msg('Nenhum item.')); return out; }
@@ -592,6 +681,81 @@ function areasView(itens, campanhas, flights, pa, cnt) {
   });
   if (!any) out.appendChild(msg('Nenhum item nesta área.'));
   return out;
+}
+// Tela Mídia (só We): o que o time de Mídia está fazendo, o que deve e o que aconteceu.
+function midiaView(itens, campanhas) {
+  const out = el('div', 'cp-group'); out.id = 'midia';
+  const dm = dash.data('midia');
+  const hist = dm.status === 'ok' ? dm.data.slice() : [];
+  const byId = {};
+  hist.forEach((h) => { (byId[h.id] = byId[h.id] || []).push(h); });
+  Object.values(byId).forEach((l) => l.sort((a, b) => (pDate(b.data) || 0) - (pDate(a.data) || 0)));
+  const rs = itens.filter((r) => r.depto === 'Mídia' || byId[r.id]);
+  const t = today();
+  const noAr = (r) => isOpen(r) && pDate(r.veic_ini) && pDate(r.veic_ini) <= t && (!pDate(r.veic_fim) || pDate(r.veic_fim) >= t) && has(r.status, 'Em execução');
+  const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, 'Mídia'));
+  head.appendChild(el('span', 'cp-muted cp-small', 'O que o time de Mídia está fazendo, o que está devendo e o histórico de cada demanda'));
+  out.appendChild(head);
+  if (dm.status === 'error') out.appendChild(el('p', 'cp-falta', 'Não consegui ler o histórico de Mídia agora; mostrando só os itens.'));
+  const grupos = [
+    ['devendo', 'Com a We: cobrar ou ajudar', (r) => isOpen(r) && !noAr(r) && r.quem !== 'Cruzeiro do Sul'],
+    ['cliente', 'Aguardando a Cruzeiro do Sul', (r) => isOpen(r) && !noAr(r) && r.quem === 'Cruzeiro do Sul'],
+    ['noar', 'No ar agora: só acompanhar', noAr]
+  ];
+  const grid = el('div', 'cp-grid');
+  grupos.forEach(([k, label, fn]) => {
+    const g = rs.filter(fn).sort(byPriority);
+    const card = el('div', 'cp-card'); card.id = 'midia-' + k;
+    const h = el('h3', null, label + ' '); h.appendChild(el('span', 'cp-sec-n', '(' + g.length + ')')); card.appendChild(h);
+    if (!g.length) card.appendChild(msg('Nada aqui.'));
+    g.forEach((r) => card.appendChild(midiaRow(r, byId[r.id] || [])));
+    grid.appendChild(card);
+  });
+  out.appendChild(grid);
+  // Últimas movimentações
+  const feed = el('div', 'cp-card'); feed.id = 'midia-feed';
+  feed.appendChild(el('h3', null, 'Últimas movimentações'));
+  if (dm.status === 'loading') feed.appendChild(msg('Carregando…'));
+  const ult = hist.slice().sort((a, b) => (pDate(b.data) || 0) - (pDate(a.data) || 0)).slice(0, 12);
+  if (dm.status === 'ok' && !ult.length) feed.appendChild(msg('Nenhuma movimentação registrada.'));
+  if (ult.length) {
+    const ul = el('ul', 'cp-hist');
+    ult.forEach((x) => {
+      const li = el('li'); li.appendChild(el('span', 'd', short(x.data)));
+      li.appendChild(el('b', null, (x.demanda || x.id) + ': '));
+      li.appendChild(document.createTextNode(x.evento));
+      if (x.origem) li.appendChild(el('span', 'o', ' · ' + x.origem));
+      ul.appendChild(li);
+    });
+    feed.appendChild(ul);
+  }
+  out.appendChild(feed);
+  const fin = rs.filter((r) => !isOpen(r));
+  if (fin.length) {
+    const d = el('details'); d.appendChild(el('summary', null, 'Entregues e cancelados (' + fin.length + ')'));
+    const c = el('div', 'cp-card'); fin.forEach((r) => c.appendChild(midiaRow(r, byId[r.id] || []))); d.appendChild(c);
+    out.appendChild(d);
+  }
+  return out;
+}
+function midiaRow(r, hs) {
+  const row = el('div', 'cp-mrow' + (rowMark(r) ? ' ' + rowMark(r) : '')); row.dataset.source = 'itens'; row.dataset.key = r.id;
+  const h = el('div', 'cp-mhead');
+  const l = el('div'); l.appendChild(el('b', null, r.item));
+  l.appendChild(el('div', 'cp-muted cp-small', [r.campanha, r.depto && r.depto !== 'Mídia' ? r.depto : null, r.id].filter(Boolean).join(' · ')));
+  h.appendChild(l);
+  const rt = el('div', 'cp-small'); rt.appendChild(pill(r.status));
+  const dt = r.veic_ini ? 'No ar ' + veic(r) : (r.prazo ? 'Prazo ' + short(r.prazo) : '');
+  if (dt) rt.appendChild(el('span', 'cp-muted', ' ' + dt));
+  h.appendChild(rt); row.appendChild(h);
+  if (r.proximo) row.appendChild(el('div', 'cp-small', 'Próximo passo: ' + r.proximo + (r.quem ? ' (' + r.quem + ')' : '')));
+  if (hs.length) {
+    const d = el('details'); d.appendChild(el('summary', null, 'Última: ' + short(hs[0].data) + ' · ' + hs[0].evento + (hs.length > 1 ? ' · ver histórico (' + hs.length + ')' : '')));
+    const ul = el('ul', 'cp-hist');
+    hs.forEach((x) => { const li = el('li'); li.appendChild(el('span', 'd', short(x.data))); li.appendChild(document.createTextNode(x.evento)); if (x.origem) li.appendChild(el('span', 'o', ' · ' + x.origem)); ul.appendChild(li); });
+    d.appendChild(ul); row.appendChild(d);
+  } else if (r.descritivo) row.appendChild(el('div', 'cp-muted cp-small', r.descritivo));
+  return row;
 }
 </script>
 <div class="pg-foot"><span id="pg-hora">Carregando…</span><span>Os dados vêm direto da planilha e se atualizam sozinhos a cada 5 minutos. <button type="button" id="pg-reload">Atualizar agora</button></span></div>
