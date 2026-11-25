@@ -459,7 +459,7 @@ dash.draw('tiles', (box) => {
 
 dash.draw('nav', (box) => {
   const seg = el('div', 'cp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Ver por');
-  [['campanhas', 'Campanhas'], ['areas', 'Áreas']].concat(U.visao === 'we' ? [['midia', 'Mídia']] : []).forEach(([k, l]) => {
+  [['campanhas', 'Campanhas'], ['areas', 'Departamentos']].concat(U.visao === 'we' ? [['midia', 'No ar']] : []).forEach(([k, l]) => {
     const b = el('button', null, l); b.type = 'button'; b.setAttribute('aria-pressed', U.modo === k && !U.filtro ? 'true' : 'false');
     b.onclick = () => go({ modo: k, campanha: null, fase: null, filtro: null }); seg.appendChild(b);
   });
@@ -676,7 +676,7 @@ function flightBlock(x, rs) {
 
 function areasView(itens, campanhas, flights, pa, cnt) {
   const out = el('div', 'cp-group'); out.id = 'areas';
-  const chips = el('div', 'cp-chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Áreas');
+  const chips = el('div', 'cp-chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Departamentos');
   const AR = pa.status === 'ok' && pa.data ? pa.data.map((x) => x.area) : AREAS;
   const vis = AR.filter((a) => cnt(pa, { visao: U.visao, area: a }).total);
   if (vis.length && !vis.includes(U.area)) U.area = vis[0];
