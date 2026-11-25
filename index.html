@@ -719,7 +719,8 @@ function midiaView(itens, campanhas) {
   Object.values(byId).forEach((l) => l.sort((a, b) => (pDate(b.data) || 0) - (pDate(a.data) || 0)));
   const rs = itens.filter((r) => r.depto === 'Mídia' || byId[r.id]);
   const t = today();
-  const noAr = (r) => isOpen(r) && pDate(r.veic_ini) && pDate(r.veic_ini) <= t && (!pDate(r.veic_fim) || pDate(r.veic_fim) >= t) && has(r.status, 'Em execução');
+  // No ar: veiculação em curso hoje, com o trabalho da agência entregue (Finalizado) ou ainda em execução.
+  const noAr = (r) => !has(r.status, 'Cancelado') && pDate(r.veic_ini) && pDate(r.veic_ini) <= t && (!pDate(r.veic_fim) || pDate(r.veic_fim) >= t) && (!isOpen(r) || has(r.status, 'Em execução'));
   const head = el('div', 'cp-card-head'); head.appendChild(el('h2', null, 'Mídia'));
   head.appendChild(el('span', 'cp-muted cp-small', 'O que o time de Mídia está fazendo, o que está devendo e o histórico de cada demanda'));
   out.appendChild(head);
@@ -758,7 +759,7 @@ function midiaView(itens, campanhas) {
     feed.appendChild(ul);
   }
   out.appendChild(feed);
-  const fin = rs.filter((r) => !isOpen(r));
+  const fin = rs.filter((r) => !isOpen(r) && !noAr(r));
   if (fin.length) {
     const d = el('details'); d.appendChild(el('summary', null, 'Entregues e cancelados (' + fin.length + ')'));
     const c = el('div', 'cp-card'); fin.forEach((r) => c.appendChild(midiaRow(r, byId[r.id] || []))); d.appendChild(c);
