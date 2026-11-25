@@ -743,7 +743,8 @@ function midiaView(itens, campanhas) {
   const feed = el('div', 'cp-card'); feed.id = 'midia-feed';
   feed.appendChild(el('h3', null, 'Últimas movimentações'));
   if (dm.status === 'loading') feed.appendChild(msg('Carregando…'));
-  const ult = hist.slice().sort((a, b) => (pDate(b.data) || 0) - (pDate(a.data) || 0)).slice(0, 12);
+  const idsItens = new Set(itens.map((r) => r.id));
+  const ult = hist.filter((x) => idsItens.has(x.id)).sort((a, b) => (pDate(b.data) || 0) - (pDate(a.data) || 0)).slice(0, 12);
   if (dm.status === 'ok' && !ult.length) feed.appendChild(msg('Nenhuma movimentação registrada.'));
   if (ult.length) {
     const ul = el('ul', 'cp-hist');
