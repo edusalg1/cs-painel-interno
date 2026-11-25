@@ -89,6 +89,12 @@ window.dash = (function () {
 .cp h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
 .cp h3 { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: 0; }
 .cp-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-lg); }
+.cp-sino { margin-left: auto; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-border-line); background: #ffffff; color: var(--color-fg); cursor: pointer; padding: 0; }
+.cp-sino:hover { border-color: var(--color-fg-muted); }
+.cp-sino[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: inset 0 0 0 1px var(--color-fg); }
+.cp-sino svg { width: 22px; height: 22px; }
+.cp-sino-badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #c2413a; color: #ffffff; font-size: 11px; font-weight: 600; line-height: 20px; text-align: center; box-sizing: border-box; }
+#sino-box { margin-left: auto; }
 .cp-logos { display: inline-flex; align-items: center; gap: var(--cds-gap-md); background: #ffffff; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 10px 16px; }
 .cp-logos img { height: 30px; width: auto; display: block; }
 .cp-sep { width: 1px; height: 28px; background: #d9dee8; }
@@ -172,6 +178,7 @@ button.cp-tile[aria-pressed="true"] { border-color: var(--color-fg); box-shadow:
       <h1>Conta Cruzeiro do Sul Educacional</h1>
       <p class="cp-sub">O que está em aberto, com quem e até quando · Visão We (interna)</p>
     </div>
+    <div id="sino-box" data-draw="sino"></div>
   </header>
 
   <div class="cp-tiles" id="resumo" data-draw="tiles"></div>
@@ -279,7 +286,7 @@ dash.calc('alertas_abertos', {
 
 <script>
 window.cpUI = window.cpUI || { modo: 'campanhas', visao: window.CP_MODO, campanha: null, fase: null, area: 'Planejamento', filtro: null };
-try { if (window.CP_MODO === 'we' && /^#midia/.test(location.hash)) window.cpUI.modo = 'midia'; } catch (e) {}
+try { if (window.CP_MODO === 'we' && /^#midia/.test(location.hash)) window.cpUI.modo = 'midia'; if (window.CP_MODO === 'we' && /^#alertas/.test(location.hash)) window.cpUI.modo = 'alertas'; } catch (e) {}
 const U = window.cpUI;
 const AREAS = ['Atendimento', 'Planejamento', 'Mídia', 'Criação', 'Conteúdo', 'Produção', 'Administrativo', 'Sem área'];
 
@@ -321,8 +328,8 @@ function pill(status) {
 }
 function safeLink(label, url) { if (!url || !/^https?:\/\//.test(url)) return null; const a = el('a', null, label); a.href = url; a.target = '_blank'; a.rel = 'noopener'; return a; }
 function veic(r) { return r.veic_ini ? (r.veic_fim && r.veic_fim !== r.veic_ini ? short(r.veic_ini) + ' a ' + short(r.veic_fim) : short(r.veic_ini)) : ''; }
-function rerender() { dash.draw('nav'); dash.draw('vista'); dash.draw('tiles'); }
-function go(patch) { Object.assign(U, patch); if ('modo' in patch) { try { history.replaceState(null, '', U.modo === 'midia' ? '#midia' : location.pathname + location.search); } catch (e) {} } rerender(); const v = document.getElementById('navegacao'); if (v && patch.scroll) v.scrollIntoView({block: 'start'}); }
+function rerender() { dash.draw('nav'); dash.draw('vista'); dash.draw('tiles'); dash.draw('sino'); }
+function go(patch) { Object.assign(U, patch); if ('modo' in patch) { try { history.replaceState(null, '', U.modo === 'midia' ? '#midia' : U.modo === 'alertas' ? '#alertas' : location.pathname + location.search); } catch (e) {} } rerender(); const v = document.getElementById('navegacao'); if (v && patch.scroll) v.scrollIntoView({block: 'start'}); }
 
 function visibleItems(itens, campanhas) { return U.visao === 'we' ? itens : itens.filter((r) => window.cpVis(r, campanhas)); }
 // Só campanhas ativas (Status geral diferente de Finalizado/Cancelado); Administrativo e Institucional primeiro.
@@ -472,6 +479,7 @@ dash.draw('vista', (box) => {
   if (U.filtro) return box.replaceChildren(filtroView(itens, campanhas));
   if (U.modo === 'areas') return box.replaceChildren(areasView(itens, campanhas, flights, pa, cnt));
   if (U.modo === 'midia' && U.visao === 'we') return box.replaceChildren(midiaView(itens, campanhas));
+  if (U.modo === 'alertas' && U.visao === 'we') return box.replaceChildren(alertasView());
   if (U.campanha && campanhas.some((c) => c.campanha === U.campanha)) return box.replaceChildren(campanhaView(itens, campanhas, fases, flights, pf, cnt));
   box.replaceChildren(homeView(itens, campanhas, pc, cnt));
 });
@@ -507,10 +515,29 @@ function homeView(itens, campanhas, pc, cnt) {
     card.appendChild(b);
     out.appendChild(card);
   });
-  if (U.visao === 'we') out.appendChild(alertasCard());
   return out;
 }
 
+// Sino no topo (só We): mostra quantos alertas estão abertos e abre a página de alertas.
+dash.draw('sino', (box) => {
+  if (U.visao !== 'we') return box.replaceChildren();
+  const n = dash.data('alertas_abertos');
+  const k = n.status === 'ok' && typeof n.data === 'number' ? n.data : 0;
+  const b = el('button', 'cp-sino'); b.type = 'button'; b.id = 'sino';
+  b.setAttribute('aria-pressed', U.modo === 'alertas' ? 'true' : 'false');
+  b.setAttribute('aria-label', k ? k + ' alertas abertos: informação a confirmar' : 'Alertas: nada a confirmar');
+  b.title = k ? k + (k === 1 ? ' alerta aberto' : ' alertas abertos') : 'Nenhum alerta aberto';
+  b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>';
+  if (k) { const s = el('span', 'cp-sino-badge', k > 99 ? '99+' : String(k)); s.dataset.source = 'alertas_abertos'; b.appendChild(s); }
+  b.onclick = () => go({ modo: U.modo === 'alertas' ? 'campanhas' : 'alertas', campanha: null, fase: null, filtro: null, scroll: true });
+  box.replaceChildren(b);
+});
+function alertasView() {
+  const out = el('div', 'cp-group'); out.id = 'pagina-alertas';
+  const back = el('button', 'cp-link', '← Voltar'); back.type = 'button'; back.onclick = () => go({ modo: 'campanhas', scroll: true });
+  out.append(back, alertasCard());
+  return out;
+}
 function alertasCard() {
   const card = el('div', 'cp-card'); card.id = 'alertas';
   const da = dash.data('alertas'), n = dash.data('alertas_abertos');
